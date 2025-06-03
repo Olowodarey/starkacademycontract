@@ -6,3 +6,7 @@ pub mod contract {
 pub mod interfaces {
     pub mod Itournament;
 }
+
+pub mod structs {
+    pub mod structs;
+}

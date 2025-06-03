@@ -1,7 +1,24 @@
+use starkacademycontract::structs::structs::Tournament;
+
 #[starknet::interface]
 pub trait Itournament<TContractState> {
-    /// Increase contract balance.
-    fn increase_balance(ref self: TContractState, amount: felt252);
-    /// Retrieve contract balance.
-    fn get_balance(self: @TContractState) -> felt252;
+    /// create a tournament
+    fn create_tournament(
+        ref self: TContractState,
+        title: ByteArray,
+        description: ByteArray,
+        start_date: felt252,
+        end_date: felt252,
+        entry_fee: u256,
+        prize_pool: u256,
+        image_url: ByteArray,
+    ) -> u64;
+
+    /// get tournament by id
+    fn get_tournament(self: @TContractState, id: u64) -> Tournament;
+
+    /// get all tournaments
+    fn get_tournaments(self: @TContractState) -> Array<Tournament>;
+
+    fn get_tournament_id(self: @TContractState) -> u64;
 }
