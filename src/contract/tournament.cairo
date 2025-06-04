@@ -65,6 +65,15 @@ pub mod Tournament {
         SRC5Event: SRC5Component::Event,
         #[flat]
         UpgradeableEvent: UpgradeableComponent::Event,
+        TournamentActivated: TournamentActivated,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct TournamentActivated {
+        #[key]
+        tournament_id: u64,
+        #[key]
+        activated_by: ContractAddress,
     }
 
     #[constructor]
@@ -143,6 +152,7 @@ pub mod Tournament {
                 entry_fee,
                 prize_pool,
                 image_url,
+                is_active: false,
             };
 
             self.next_id.write(new_id);
@@ -150,6 +160,38 @@ pub mod Tournament {
             self.tournaments.write(new_id, tournament);
 
             return new_id;
+        }
+
+        // Activate a tournament
+        fn activate_tournament(ref self: ContractState, tournament_id: u64) {
+            // -- check if contract is paused
+            self.pausable.assert_not_paused();
+
+            // -- check if caller has ADMIN_ROLE or DEFAULT_ADMIN_ROLE
+            let caller = get_caller_address();
+            let has_admin_role = self.accesscontrol.has_role(DEFAULT_ADMIN_ROLE, caller);
+
+            assert(has_admin_role, 'Caller not Admin');
+
+            // -- check if tournament exists
+            let mut tournament = self.tournaments.read(tournament_id);
+            assert(tournament.id != 0, 'Tournament does not exist');
+
+            // -- check if tournament is already active
+            assert(!tournament.is_active, 'Tournament already active');
+
+            // -- activate the tournament
+            tournament.is_active = true;
+            self.tournaments.write(tournament_id, tournament);
+
+            // -- emit event
+            self.emit(TournamentActivated { tournament_id, activated_by: caller });
+        }
+
+        // Check if tournament is active
+        fn is_tournament_active(self: @ContractState, tournament_id: u64) -> bool {
+            let tournament = self.tournaments.read(tournament_id);
+            tournament.is_active
         }
 
         // Get tournament by id

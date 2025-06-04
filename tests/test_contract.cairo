@@ -23,6 +23,26 @@ fn random_user() -> ContractAddress {
     random_user
 }
 
+fn create_test_tournament(contract_instance: ItournamentDispatcher, owner: ContractAddress) -> u64 {
+    let title: ByteArray = "Test Tournament";
+    let description: ByteArray = "Test Description";
+    let start_date: felt252 = 1672531200;
+    let end_date: felt252 = 1672617600;
+    let entry_fee: u256 = 10;
+    let prize_pool: u256 = 1000;
+    let image_url: ByteArray = "https://example.com/test.jpg";
+
+    start_cheat_caller_address(contract_instance.contract_address, owner);
+
+    let tournament_id = contract_instance
+        .create_tournament(
+            title, description, start_date, end_date, entry_fee, prize_pool, image_url,
+        );
+
+    stop_cheat_caller_address(contract_instance.contract_address);
+    tournament_id
+}
+
 // end of helpers
 
 /// ******** SET-UP ********
@@ -146,5 +166,126 @@ fn test_create_tournament_non_owner() {
     assert(contract_instance.get_tournament_id() == 1, 'ID should be 1 after create');
 
     stop_cheat_caller_address(contract_instance.contract_address);
+}
+
+// -- test activate tournament
+#[test]
+fn test_activate_tournament_success() {
+    let (contract_address, owner) = setup();
+    let contract_instance = ItournamentDispatcher { contract_address };
+
+    // create tournament
+    let tournament_id = create_test_tournament(contract_instance, owner);
+
+    // tournament should be initially inactive
+    assert(!contract_instance.is_tournament_active(tournament_id), 'Tournament should be inactive');
+
+    // activate tournament as admin
+    start_cheat_caller_address(contract_instance.contract_address, owner);
+    contract_instance.activate_tournament(tournament_id);
+    stop_cheat_caller_address(contract_instance.contract_address);
+
+    // verify tournament is now active
+    assert(contract_instance.is_tournament_active(tournament_id), 'Tournament should be active');
+
+    // verify tournament data is preserved
+    let tournament = contract_instance.get_tournament(tournament_id);
+    assert(tournament.id == tournament_id, 'Tournament ID should match');
+    assert(tournament.is_active, 'Tournament should be active');
+}
+#[test]
+#[should_panic(expected: 'Caller not Admin')]
+fn test_activate_tournament_non_admin() {
+    let (contract_address, owner) = setup();
+    let contract_instance = ItournamentDispatcher { contract_address };
+
+    // create tournament
+    let tournament_id = create_test_tournament(contract_instance, owner);
+
+    // try to activate tournament as non-admin (should fail)
+    start_cheat_caller_address(contract_instance.contract_address, random_user());
+    contract_instance.activate_tournament(tournament_id);
+    stop_cheat_caller_address(contract_instance.contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'Tournament does not exist')]
+fn test_activate_nonexistent_tournament() {
+    let (contract_address, owner) = setup();
+    let contract_instance = ItournamentDispatcher { contract_address };
+
+    // try to activate a tournament that doesn't exist
+    start_cheat_caller_address(contract_instance.contract_address, owner);
+    contract_instance.activate_tournament(999); // Non-existent tournament ID
+    stop_cheat_caller_address(contract_instance.contract_address);
+}
+
+#[test]
+#[should_panic(expected: 'Tournament already active')]
+fn test_activate_already_active_tournament() {
+    let (contract_address, owner) = setup();
+    let contract_instance = ItournamentDispatcher { contract_address };
+
+    // create and activate a tournament
+    let tournament_id = create_test_tournament(contract_instance, owner);
+
+    start_cheat_caller_address(contract_instance.contract_address, owner);
+    contract_instance.activate_tournament(tournament_id);
+
+    // try to activate again (should fail)
+    contract_instance.activate_tournament(tournament_id);
+    stop_cheat_caller_address(contract_instance.contract_address);
+}
+
+#[test]
+fn test_multiple_tournaments_activation() {
+    let (contract_address, owner) = setup();
+    let contract_instance = ItournamentDispatcher { contract_address };
+
+    // create multiple tournaments
+    let tournament_id_1 = create_test_tournament(contract_instance, owner);
+    let tournament_id_2 = create_test_tournament(contract_instance, owner);
+
+    // verify both are initially inactive
+    assert(!contract_instance.is_tournament_active(tournament_id_1), 'should be
+    inactive');
+    assert(!contract_instance.is_tournament_active(tournament_id_2), 'should be
+    inactive');
+
+    // activate only the first tournament
+    start_cheat_caller_address(contract_instance.contract_address, owner);
+    contract_instance.activate_tournament(tournament_id_1);
+    stop_cheat_caller_address(contract_instance.contract_address);
+
+    // verify states
+    assert(contract_instance.is_tournament_active(tournament_id_1), 'should be
+    active');
+    assert(!contract_instance.is_tournament_active(tournament_id_2), 'should remain
+    inactive');
+
+    // activate the second tournament
+    start_cheat_caller_address(contract_instance.contract_address, owner);
+    contract_instance.activate_tournament(tournament_id_2);
+    stop_cheat_caller_address(contract_instance.contract_address);
+
+    // verify both are now active
+    assert(contract_instance.is_tournament_active(tournament_id_1), 'should be
+    active');
+    assert(contract_instance.is_tournament_active(tournament_id_2), 'should be
+    active');
+}
+
+#[test]
+fn test_tournament_creation_default_inactive() {
+    let (contract_address, owner) = setup();
+    let contract_instance = ItournamentDispatcher { contract_address };
+
+    // create a tournament
+    let tournament_id = create_test_tournament(contract_instance, owner);
+
+    // verify tournament is created as inactive by default
+    let tournament = contract_instance.get_tournament(tournament_id);
+    assert(!tournament.is_active, 'New tour. should be inactive');
+    assert(!contract_instance.is_tournament_active(tournament_id), 'is_tournament_active == false');
 }
 
