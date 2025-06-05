@@ -8,5 +8,6 @@ pub struct Tournament {
     pub entry_fee: u256,
     pub prize_pool: u256,
     pub image_url: ByteArray,
+    pub is_active: bool,
 }
 

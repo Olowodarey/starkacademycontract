@@ -14,6 +14,9 @@ pub trait Itournament<TContractState> {
         image_url: ByteArray,
     ) -> u64;
 
+    fn activate_tournament(ref self: TContractState, tournament_id: u64);
+    fn is_tournament_active(self: @TContractState, tournament_id: u64) -> bool;
+
     /// get tournament by id
     fn get_tournament(self: @TContractState, id: u64) -> Tournament;
 
