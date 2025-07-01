@@ -18,6 +18,10 @@ pub trait Itournament<TContractState> {
     fn is_tournament_active(self: @TContractState, tournament_id: u64) -> bool;
 
     /// get tournament by id
+
+    /// set the reward pool for a tournament
+    fn set_reward_pool(ref self: TContractState, tournament_id: u64, new_prize_pool: u256);
+
     fn get_tournament(self: @TContractState, id: u64) -> Tournament;
 
     /// get all tournaments

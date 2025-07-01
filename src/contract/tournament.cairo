@@ -120,6 +120,28 @@ pub mod Tournament {
 
     #[abi(embed_v0)]
     impl TournamentImpl of Itournament<ContractState> {
+
+        /// Set the reward pool for a tournament (admin only)
+        fn set_reward_pool(ref self: ContractState, tournament_id: u64, new_prize_pool: u256) {
+            // Check if contract is paused
+            self.pausable.assert_not_paused();
+
+            // Check if caller has ADMIN_ROLE or DEFAULT_ADMIN_ROLE
+            let caller = get_caller_address();
+            let has_admin_role = self.accesscontrol.has_role(DEFAULT_ADMIN_ROLE, caller);
+            assert(has_admin_role, 'Caller not Admin');
+
+            // Validate new prize pool value
+            assert(new_prize_pool > 0, 'Prize pool must be greater than zero');
+
+            // Check if tournament exists
+            let mut tournament = self.tournaments.read(tournament_id);
+            assert(tournament.id != 0, 'Tournament does not exist');
+
+            // Update the prize pool
+            tournament.prize_pool = new_prize_pool;
+            self.tournaments.write(tournament_id, tournament);
+        }
         // Create a tournament
         fn create_tournament(
             ref self: ContractState,
